@@ -11,7 +11,7 @@ struct ZMQTT2Prom: AsyncParsableCommand {
       zmqtt2prom connects to an MQTT broker, discovers Zigbee devices from Zigbee2MQTT,
       and exposes their data as Prometheus metrics via an HTTP endpoint at /metrics.
 
-      The service automatically discovers devices from the 'zigbee2mqtt/bridge/devices' topic,
+      The service automatically discovers devices from the '<base-topic>/bridge/devices' topic,
       subscribes to individual device topics, and transforms the data into Prometheus-compatible
       metrics based on the device expose schemas.
       """,
@@ -42,6 +42,9 @@ struct ZMQTT2Prom: AsyncParsableCommand {
   @Option(name: .long, help: "Log level (trace, debug, info, notice, warning, error, critical)")
   var logLevel: String = "info"
 
+  @Option(name: .long, help: "Root Zigbee2MQTT topic (e.g. zigbee2mqtt)")
+  var baseTopic: String?
+
   /// Validate arguments
   mutating func validate() throws {
     if mqttPort != nil && (mqttPort! < 1 || mqttPort! > 65535) {
@@ -56,17 +59,24 @@ struct ZMQTT2Prom: AsyncParsableCommand {
     if !validLogLevels.contains(logLevel.lowercased()) {
       throw ValidationError("Invalid log level. Must be one of: \(validLogLevels.joined(separator: ", "))")
     }
+
+    if let baseTopic, Self.sanitizeBaseTopic(baseTopic) == nil {
+      throw ValidationError("Base topic must not be empty")
+    }
   }
 
   /// Convert to configuration objects
   var mqttConfig: MQTTConfig {
+    let configuredBaseTopic = baseTopic ?? ProcessInfo.processInfo.environment["Z2P_BASE_TOPIC"]
+
     MQTTConfig(
       host: mqttHost ?? ProcessInfo.processInfo.environment["Z2P_MQTT_HOST"] ?? "localhost",
       port: mqttPort ?? Int(ProcessInfo.processInfo.environment["Z2P_MQTT_PORT"] ?? "1883") ?? 1883,
       username: mqttUsername ?? ProcessInfo.processInfo.environment["Z2P_MQTT_USERNAME"],
       password: mqttPassword ?? ProcessInfo.processInfo.environment["Z2P_MQTT_PASSWORD"],
       useTLS: mqttTls || ((ProcessInfo.processInfo.environment["Z2P_MQTT_TLS"] ?? "false") == "true"),
-      caCert: mqttCACert ?? ProcessInfo.processInfo.environment["Z2P_MQTT_CACERT"]
+      caCert: mqttCACert ?? ProcessInfo.processInfo.environment["Z2P_MQTT_CACERT"],
+      baseTopic: Self.sanitizeBaseTopic(configuredBaseTopic) ?? "zigbee2mqtt"
     )
   }
 
@@ -81,6 +91,7 @@ struct ZMQTT2Prom: AsyncParsableCommand {
     let logger = Logger(label: ".main")
     logger.info("Starting zmqtt2prom")
     logger.info("MQTT: \(mqttConfig.host):\(mqttConfig.port)")
+    logger.info("MQTT base topic: \(mqttConfig.baseTopic)")
     logger.info("HTTP: 0.0.0.0:\(httpPort)")
 
     let app = ZMQTT2PromApplication(
@@ -102,5 +113,12 @@ struct ZMQTT2Prom: AsyncParsableCommand {
     case "critical": return .critical
     default: return .info
     }
+  }
+
+  private static func sanitizeBaseTopic(_ topic: String?) -> String? {
+    guard let topic else { return nil }
+    let trimmed = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmedSlashes = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    return trimmedSlashes.isEmpty ? nil : trimmedSlashes
   }
 }

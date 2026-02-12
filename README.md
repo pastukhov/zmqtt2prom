@@ -33,11 +33,13 @@ Binaries for macOS and Linux are attached to each [release](https://github.com/y
 See `--help` for options but typical usage would be something like this:
 
 ```
-zmqtt2prom --mqtt-host mqtt.home.com --mqtt-username myusername --mqtt-password mypassword --log-level info
+zmqtt2prom --mqtt-host mqtt.home.com --mqtt-username myusername --mqtt-password mypassword --log-level info --base-topic zigbee2mqtt
 ```
+
+You can also set the root topic via environment variable `Z2P_BASE_TOPIC` (default: `zigbee2mqtt`).
 
 An example [docker-compose.yml](https://github.com/yellowstonesoftware/zmqtt2prom/blob/main/docker-compose.yml) is provided otherwise the container can be ran manually:
 
 ```
-docker run --rm -it --name zmqtt2prom -p 8080:8080 yellowstonesoftware/zmqtt2prom:latest --mqtt-host mqtt.home.com --mqtt-username myusername --mqtt-password mypassword --log-level info --http-port 8080
+docker run --rm -it --name zmqtt2prom -p 8080:8080 yellowstonesoftware/zmqtt2prom:latest --mqtt-host mqtt.home.com --mqtt-username myusername --mqtt-password mypassword --log-level info --http-port 8080 --base-topic zigbee2mqtt
 ```

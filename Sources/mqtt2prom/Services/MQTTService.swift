@@ -33,7 +33,7 @@ struct MQTTService {
   private let metricsManager: MetricsManager
   private let client: MQTTClient
   private let deviceRegistry: DeviceRegistry
-  private let baseTopicName = "zigbee2mqtt/"
+  private let baseTopicPrefix: String
 
   init(
     config: MQTTConfig,
@@ -43,6 +43,7 @@ struct MQTTService {
     self.config = config
     self.metricsManager = metricsManager
     self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
+    self.baseTopicPrefix = "\(config.baseTopic)/"
 
     let configuration: MQTTClient.Configuration
     if config.useTLS {
@@ -158,9 +159,9 @@ struct MQTTService {
   func discoverDevices(registerPublishListener: Bool) async throws {
     guard client.isActive() else { throw MQTTError.notConnected }
 
-    logger.info("Subscribing to zigbee2mqtt/bridge/devices topic for device discovery")
+    logger.info("Subscribing to \(baseTopicPrefix)bridge/devices topic for device discovery")
 
-    let subscribeInfo = MQTTSubscribeInfo(topicFilter: "zigbee2mqtt/bridge/devices", qos: .atMostOnce)
+    let subscribeInfo = MQTTSubscribeInfo(topicFilter: "\(baseTopicPrefix)bridge/devices", qos: .atMostOnce)
     _ = try await client.subscribe(to: [subscribeInfo])
 
     if registerPublishListener {
@@ -176,14 +177,14 @@ struct MQTTService {
     switch result {
     case .success(let publishInfo):
 
-      guard publishInfo.topicName.hasPrefix(baseTopicName) else { return }
-      let topicNameSuffix = publishInfo.topicName.dropFirst(baseTopicName.count)
+      guard publishInfo.topicName.hasPrefix(baseTopicPrefix) else { return }
+      let topicNameSuffix = publishInfo.topicName.dropFirst(baseTopicPrefix.count)
 
       switch topicNameSuffix {
       case "bridge/devices":
         await handleDeviceDiscoveryMessage(publishInfo.payload)
 
-      /// zigbee2mqtt/<friendlyName>
+      /// <base-topic>/<friendlyName>
       case let others where !others.hasPrefix("bridge/"):
         await handleDeviceMessage(deviceName: String(topicNameSuffix), payload: publishInfo.payload)
 
@@ -244,7 +245,7 @@ struct MQTTService {
     guard client.isActive() else { throw MQTTError.notConnected }
 
     let subscribeInfos = deviceNames.map { deviceName in
-      MQTTSubscribeInfo(topicFilter: "zigbee2mqtt/\(deviceName)", qos: .atLeastOnce)
+      MQTTSubscribeInfo(topicFilter: "\(baseTopicPrefix)\(deviceName)", qos: .atLeastOnce)
     }
 
     _ = try await client.subscribe(to: subscribeInfos)
@@ -288,6 +289,7 @@ struct MQTTConfig: Sendable {
   let password: String?
   let useTLS: Bool
   let caCert: String?
+  let baseTopic: String
 }
 
 enum MQTTError: Error {

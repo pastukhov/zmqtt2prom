@@ -23,6 +23,7 @@ final class zmqtt2promTests: XCTestCase {
 
     XCTAssertTrue(eligibleDevice.isEligible)
     XCTAssertEqual(eligibleDevice.mqttTopic, "zigbee2mqtt/Test Device")
+    XCTAssertEqual(eligibleDevice.mqttTopic(baseTopic: "z2m"), "z2m/Test Device")
 
     // Test ineligible device (disabled)
     let disabledDevice = Device(
@@ -220,7 +221,8 @@ final class zmqtt2promTests: XCTestCase {
       username: "testuser",
       password: "testpass",
       useTLS: true,
-      caCert: nil
+      caCert: nil,
+      baseTopic: "zigbee2mqtt"
     )
 
     XCTAssertEqual(config.host, "broker.example.com")
@@ -228,5 +230,6 @@ final class zmqtt2promTests: XCTestCase {
     XCTAssertEqual(config.username, "testuser")
     XCTAssertEqual(config.password, "testpass")
     XCTAssertTrue(config.useTLS)
+    XCTAssertEqual(config.baseTopic, "zigbee2mqtt")
   }
 }

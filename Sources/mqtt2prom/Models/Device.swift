@@ -31,7 +31,11 @@ struct Device: Codable, Sendable {
   }
 
   var mqttTopic: String {
-    return "zigbee2mqtt/\(friendlyName)"
+    mqttTopic(baseTopic: "zigbee2mqtt")
+  }
+
+  func mqttTopic(baseTopic: String) -> String {
+    return "\(baseTopic)/\(friendlyName)"
   }
 }
 
