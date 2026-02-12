@@ -1,5 +1,7 @@
 # zmqtt2prom
 
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pastukhov/zmqtt2prom/main/.github/badges/coverage.json)
+
 ![Example Grafana Dashboard](https://github.com/yellowstonesoftware/zmqtt2prom/blob/main/example.png)
 
 zmqtt2prom is a simple service to consume messages that was published to MQTT from [Zigbee2MQTT](https://www.zigbee2mqtt.io/) and expose them as [Prometheus](https://prometheus.io/) metrics over HTTP at `GET /metrics`.

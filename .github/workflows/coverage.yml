@@ -1,0 +1,79 @@
+name: Coverage
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths-ignore:
+      - ".github/badges/coverage.json"
+
+permissions:
+  contents: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: SwiftyLab/setup-swift@latest
+        with:
+          swift-version: "6.1.2"
+
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Generate coverage badge payload
+        run: |
+          set -euo pipefail
+
+          PROFDATA="$(find .build -type f -name default.profdata | head -n 1)"
+          TEST_BINARY="$(find .build -type f -name '*.xctest' | head -n 1)"
+
+          if [ -z "${PROFDATA}" ] || [ -z "${TEST_BINARY}" ]; then
+            echo "Coverage artifacts not found"
+            exit 1
+          fi
+
+          COVERAGE_RAW="$(llvm-cov report "${TEST_BINARY}" -instr-profile "${PROFDATA}" | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')"
+          if [ -z "${COVERAGE_RAW}" ]; then
+            echo "Failed to parse TOTAL coverage"
+            exit 1
+          fi
+
+          COVERAGE="$(printf '%.1f' "${COVERAGE_RAW}")"
+          COLOR="red"
+          awk "BEGIN {exit !(${COVERAGE} >= 60)}" && COLOR="yellow"
+          awk "BEGIN {exit !(${COVERAGE} >= 80)}" && COLOR="brightgreen"
+
+          mkdir -p .github/badges
+          cat > .github/badges/coverage.json <<EOF
+          {
+            "schemaVersion": 1,
+            "label": "coverage",
+            "message": "${COVERAGE}%",
+            "color": "${COLOR}"
+          }
+          EOF
+
+          echo "Coverage: ${COVERAGE}%"
+
+      - name: Show badge payload
+        run: cat .github/badges/coverage.json
+
+      - name: Commit updated coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- .github/badges/coverage.json; then
+            echo "Badge unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.json
+          git commit -m "chore(ci): update coverage badge"
+          git push
