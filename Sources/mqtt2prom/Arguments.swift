@@ -69,7 +69,7 @@ struct ZMQTT2Prom: AsyncParsableCommand {
   var mqttConfig: MQTTConfig {
     let configuredBaseTopic = baseTopic ?? ProcessInfo.processInfo.environment["Z2P_BASE_TOPIC"]
 
-    MQTTConfig(
+    return MQTTConfig(
       host: mqttHost ?? ProcessInfo.processInfo.environment["Z2P_MQTT_HOST"] ?? "localhost",
       port: mqttPort ?? Int(ProcessInfo.processInfo.environment["Z2P_MQTT_PORT"] ?? "1883") ?? 1883,
       username: mqttUsername ?? ProcessInfo.processInfo.environment["Z2P_MQTT_USERNAME"],
