@@ -1,0 +1,8 @@
+.build
+.swiftpm
+.git
+.github
+.env
+docker-compose.yml
+README.md
+example.png
